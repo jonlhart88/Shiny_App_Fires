@@ -1,0 +1,54 @@
+---
+title: "Shiny_App_Fires"
+author: "Jonathan Hart"
+date: "3/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(RSQLite)
+library(tmap)
+library(sf)
+```
+
+
+```{r}
+my_fire_db <- dbConnect(RSQLite::SQLite(), "FPA_FOD_20170508.sqlite")
+```
+
+```{r}
+dbListTables(my_fire_db)
+```
+
+```{r}
+dbListFields(my_fire_db, "Fires")
+
+dbListFields(my_fire_db, "vector_layers")
+```
+
+```{r}
+fire_data <- dbReadTable(my_fire_db,"fires")
+
+fire_data_geometry <- dbReadTable(my_fire_db,"vector_layers")
+```
+
+```{r}
+# To query database...
+
+Eldo_fires <- dbGetQuery(my_fire_db, 'SELECT * FROM fires WHERE "SOURCE_REPORTING_UNIT_NAME" == "Eldorado National Forest"')
+
+```
+
+```{r}
+# Get it as spatial data with sf:
+
+read_sf(my_fire_db, "fires")
+```
+
+
+
