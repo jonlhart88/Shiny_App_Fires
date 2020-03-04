@@ -1,0 +1,141 @@
+---
+title: "Shiny App - AA"
+author: "Anna Abelman"
+date: "3/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+library(RSQLite)
+library(tmap)
+library(sf)
+library(janitor)
+library(tidyverse)
+#install.packages("USAboundaries")
+#install.packages("USAboundariesData", repos = "http://packages.ropensci.org", type = "source")
+library(devtools)
+#devtools::install_github("ropensci/USAboundariesData")
+library(USAboundariesData)
+library(USAboundaries)
+```
+
+
+
+```{r}
+my_fire_db <- dbConnect(RSQLite::SQLite(), "FPA_FOD_20170508.sqlite")
+```
+
+```{r}
+dbListTables(my_fire_db)
+```
+
+```{r}
+dbListFields(my_fire_db, "Fires")
+dbListFields(my_fire_db, "vector_layers")
+```
+
+```{r}
+fire_data <- dbReadTable(my_fire_db,"fires")
+fire_data_geometry <- dbReadTable(my_fire_db,"vector_layers")
+```
+
+```{r}
+# To query database...
+Eldo_fires <- dbGetQuery(my_fire_db, 'SELECT * FROM fires WHERE "SOURCE_REPORTING_UNIT_NAME" == "Eldorado National Forest"')
+
+#only look at montana and selecting only a few columns
+mt <- dbGetQuery(my_fire_db, 'SELECT * FROM fires WHERE "STATE" == "MT"') %>% 
+  clean_names() %>% 
+  dplyr::select(fire_name, fire_year, stat_cause_descr, fire_size, latitude, longitude, state, county, source_reporting_unit_name)
+
+
+# year_2015_tidy <- year_2015 %>% 
+#   clean_names() %>% 
+#   select(fire_name, fire_year, stat_cause_descr, fire_size, latitude, longitude, state, county, shape)
+```
+
+
+```{r}
+#get montana state and counties shapefile 
+counties_mt <- us_counties(states = "Montana")
+plot(st_geometry(counties_mt))
+
+mt_sf <- st_as_sf(mt, coords = c("longitude", "latitude"), crs = 4326)
+```
+
+```{r}
+#considering exporting mt dataframe to make .csv and read in as read_sf --> thoughts?
+# ------------------------------------------------------------------------------------------------
+#MAIN GOAL IS TO MAKE INTERACTIVE OR AT LEAST USE TMAP
+# ------------------------------------------------------------------------------------------------
+#every montana fire layered over a map of montana
+ggplot()+
+  geom_sf(data = counties_mt)+
+  geom_point(data = mt, aes (x = longitude, y = latitude),
+             alpha = 0.5)
+
+#filter by cause from widget
+mt_cause <- mt_sf %>% 
+  filter(stat_cause_descr == "Campfire")
+
+# ggplot()+
+#   geom_sf(data = counties_mt)+
+#   geom_point(data = mt_cause, aes (x = longitude, y = latitude),
+#              alpha = 0.5)
+
+#filter by time from widget (have user pick a specific year)
+mt_year <- mt %>% 
+  filter(fire_year == "2005")
+
+ggplot()+
+  geom_sf(data = counties_mt)+
+  geom_point(data = mt_year, aes (x = longitude, y = latitude),
+             alpha = 0.5)
+
+#filter to search specific fire name in montana
+mt_name <- mt %>% 
+  filter(fire_name == "GATEWAY")
+
+ggplot()+
+  geom_sf(data = counties_mt)+
+  geom_point(data = mt_name, aes (x = longitude, y = latitude))
+
+```
+
+
+```{r}
+mt_sf2 <- mt_sf %>% 
+  select(fire_size)
+#ask about how to have Esri.World Image locked only on MT and have the outline of MT
+#ask how to add a gradient of colors for the dots to show difference in fire_area
+tmap_mode("view")
+
+map <- tm_basemap("Stamen.TerrainBackground")+
+  tm_shape(mt_sf2)+
+  tm_dots(label = "fire_size", col = "skyblue",
+          size = 0.02)
+
+map
+
+tmap_mode("view")
+
+cause_map <- tm_basemap("Stamen.TerrainBackground")+
+  tm_shape(mt_cause)+
+  tm_dots(label = "Campfire", col = "orange",
+          size = 0.02)
+
+cause_map
+  
+```
+
+Next step:
+
+- widget for individuals to pick national forest name and show map of the fires
+- search by fire name and show map (or just table of all information aboue the fire)
+- causes of the fires (need to condense list since there are a lot of options) --> simple graph showing the frequency of each (ggbeeswarm plot). could also allow the user to pick fire cause and tmap showing dots of that cause in montana
+- times series plot showing the containment time over the years --> widget though, pick county/national forest name?
+
+```
+
