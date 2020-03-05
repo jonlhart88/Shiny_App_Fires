@@ -19,6 +19,7 @@ library(devtools)
 #devtools::install_github("ropensci/USAboundariesData")
 library(USAboundariesData)
 library(USAboundaries)
+library(ggbeeswarm)
 ```
 
 
@@ -137,5 +138,31 @@ Next step:
 - causes of the fires (need to condense list since there are a lot of options) --> simple graph showing the frequency of each (ggbeeswarm plot). could also allow the user to pick fire cause and tmap showing dots of that cause in montana
 - times series plot showing the containment time over the years --> widget though, pick county/national forest name?
 
+
+```{r}
+#frequency of causes by county
+mt_all_cause <- mt %>% 
+  select(stat_cause_descr, county) %>% 
+  group_by(county)
+
+ggplot(data = mt_all_cause, aes(x = stat_cause_descr))+
+  geom_bar(aes(fill = stat_cause_descr),
+           show.legend = FALSE)+
+  coord_flip()+
+  theme_minimal()
+
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
