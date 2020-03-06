@@ -154,6 +154,9 @@ ggplot(data = mt_all_cause, aes(x = stat_cause_descr))+
 ```
 
 
+- cause: user picks cause and output is the interactive map showing points for that cause
+- search by fire name - 2 outputs: summary table about the fire and ggplot showing the point location
+- times series of containment time: pick county/national forest and output but the times series ggplot 
 
 
 
