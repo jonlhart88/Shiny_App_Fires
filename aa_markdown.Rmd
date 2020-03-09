@@ -208,5 +208,27 @@ mt_name %>%
   )
 ```
 
+```{r}
+    mt_sf_test <- mt_sf %>% 
+      filter(stat_cause_descr == "Campfire")
+  
+    leaflet(mt_sf_test)+
+      tm_basemap("Stamen.TerrainBackground")+
+      tm_shape(mt_sf)+
+      tm_dots(label = "Campfire", col = "orange",
+              size = 0.02)
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -13,11 +13,31 @@ library(USAboundariesData)
 library(USAboundaries)
 library(devtools)
 library(leaflet)
+library(kableExtra)
+library(lubridate)
 
 # ----------------------------
 #read in data
 # ----------------------------
-#mt <- read_csv("")
+counties_mt <- us_counties(states = "Montana")
+plot(st_geometry(counties_mt))
+
+mt <- read_csv("montana_fire.csv") %>% 
+  clean_names() %>% 
+  select(-fire_code, -fire_size_class)
+
+mt_sf <- st_as_sf(mt, coords = c("longitude", "latitude"), crs = 4326)
+
+mt_date <- mt %>% 
+  mutate(new_dis_date = as.Date(discovery_date, origin = structure(-2440588, class = "Date"))) %>% 
+  mutate(new_cont_date = as.Date(cont_date, origin = structure(-2440588, class = "Date")))
+
+mt_date_combined <- mt_date %>% 
+  mutate(final_dis_date = lubridate::ymd_hm(paste(mt_date$new_dis_date, mt_date$discovery_time))) %>% 
+  mutate(final_cont_date = lubridate::ymd_hm(paste(mt_date$new_cont_date, mt_date$cont_time))) %>% 
+  mutate(interval = difftime(final_cont_date,final_dis_date,units = "min")) %>% 
+  mutate(interval = round(interval/60, 2)) %>% 
+  drop_na(final_cont_date, final_dis_date)
 
 # ---------------------------
 # create `ui` 
@@ -50,7 +70,7 @@ ui <- dashboardPage(
           box(title = "Montana Wildfires by Name",
               selectInput("mt_fire_name",
                           "Search a specific wildfire by name:", choices = c(unique(mt$source_reporting_unit_name)))),
-          box(gt_output(outputId = "mt_fire_summary")),
+          box(tableOutput(outputId = "mt_fire_summary")),
           box(plotOutput(outputId = "name_plot"))
         )
       ),
@@ -79,44 +99,30 @@ server <- function(input, output){
   })
   
   output$mt_cause_map <- renderLeaflet({
-    tm <- tm_basemap("Stamen.TerrainBackground")+
-      tm_shape(mt_df())+
+    leaflet(mt_df())+
+      tm_basemap("Stamen.TerrainBackground")+
       tm_dots(label = "Campfire", col = "orange",
               size = 0.02)
   })
   
-  mt_df <- reactive({
+  mt_df2 <- reactive({
     mt_sf %>% 
       filter(fire_name == input$mt_fire_name)
   })
   
-  output$mt_fire_summary <- render_gt({
-    mt %>% 
-      gt() %>% 
-      tab_header(
-        title = "Fire Summary"
-      ) %>% 
-      cols_label(
-        fire_name = "Name of Fire",
-        fire_year = "Year",
-        stat_cause_descr = "Cause of Fire",
-        fire_size = "Fire Area",
-        latitude = "Latitude",
-        longitude = "Longitude",
-        state = "State",
-        source_reporting_unit_name = "Name of Reporting Source"
-      )
+  output$mt_fire_summary <- renderTable({
+    fire_summary_table()
   })
   
   output$name_plot <- renderPlot({
     ggplot()+
       geom_sf(data = counties_mt)+
-      geom_point(data = mt_df(), aes (x = longitude, y = latitude))
+      geom_point(data = mt_df2(), aes (x = longitude, y = latitude))
   })
   
-  mt_df <- reactive({
+  mt_df3 <- reactive({
     mt_date_combined %>% 
-    filter(source_reporting_unit_name == input$source_time) %>% 
+      filter(source_reporting_unit_name == input$source_time) %>% 
       group_by(fire_year) %>% 
       summarize(
         mean_interval = round(mean(interval),2)
@@ -124,7 +130,7 @@ server <- function(input, output){
   })
   
   output$time_plot <- renderPlot({
-    ggplot(data = mt_date_combined(), aes(x = fire_year, y = mean_interval))+
+    ggplot(data = mt_df3(), aes(x = fire_year, y = mean_interval))+
       geom_line(color = "darkgreen")
   })
 }
@@ -132,6 +138,13 @@ server <- function(input, output){
 
 # --------------------------------
 shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
 
 
 
