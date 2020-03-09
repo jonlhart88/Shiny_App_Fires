@@ -22,16 +22,20 @@ library(lubridate)
 counties_mt <- us_counties(states = "Montana")
 plot(st_geometry(counties_mt))
 
+#adding data set
 mt <- read_csv("montana_fire.csv") %>% 
   clean_names() %>% 
   select(-fire_code, -fire_size_class)
 
+#making an sf data frame
 mt_sf <- st_as_sf(mt, coords = c("longitude", "latitude"), crs = 4326)
 
+#changing the data from julian to normal
 mt_date <- mt %>% 
   mutate(new_dis_date = as.Date(discovery_date, origin = structure(-2440588, class = "Date"))) %>% 
   mutate(new_cont_date = as.Date(cont_date, origin = structure(-2440588, class = "Date")))
 
+#combining data and time for containment to find the difference between the discovery time and containment time
 mt_date_combined <- mt_date %>% 
   mutate(final_dis_date = lubridate::ymd_hm(paste(mt_date$new_dis_date, mt_date$discovery_time))) %>% 
   mutate(final_cont_date = lubridate::ymd_hm(paste(mt_date$new_cont_date, mt_date$cont_time))) %>% 
